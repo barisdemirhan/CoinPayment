@@ -111,7 +111,7 @@
                     </div>
                 </div>
                 <div class="text-center mb-3">
-                    <a v-bind:href="payload.cancel_url || payload.redirect_url">&laquo; Cancel Transaction</a>
+                    <a v-bind:href="(payload.cancel_url || payload.redirect_url)+'?order_id='+payload.order_id">&laquo; Canceld Transaction</a>
                 </div>
             </div>
 
@@ -275,7 +275,7 @@
                 </div>
                 <div class="modal-footer">
                     <a target="_blank" class="btn btn-secondary" v-bind:href="transaction.status_url">Alternative link</a>
-                    <a v-bind:href="payload.redirect_url" class="btn btn-primary">Finish</a>
+                    <a v-bind:href="payload.redirect_url+'?order_id='+payload.order_id" class="btn btn-primary">Finish</a>
                 </div>
                 </div>
             </div>

@@ -111,7 +111,7 @@
                     </div>
                 </div>
                 <div class="text-center mb-3">
-                    <a v-bind:href="(payload.cancel_url || payload.redirect_url)+'?order_id='+payload.order_id">&laquo; Canceld Transaction</a>
+                    <a v-bind:href="(payload.cancel_url || payload.redirect_url)+'?order_id='+payload.order_id">&laquo; Cancel Transaction</a>
                 </div>
             </div>
 

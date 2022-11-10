@@ -15,14 +15,16 @@ use Hexters\CoinPayment\Entities\CoinpaymentTransaction;
 use Hexters\CoinPayment\CoinPayment;
 
 
-class AjaxController extends CoinPaymentController {
+class AjaxController extends CoinPaymentController
+{
 
     use ApiCallTrait;
 
     protected $helper;
     protected $model;
 
-    public function __construct(CoinPaymentHelper $helper, CoinpaymentTransaction $model) {
+    public function __construct(CoinPaymentHelper $helper, CoinpaymentTransaction $model)
+    {
         parent::__construct();
         $this->helper = $helper;
         $this->model = $model;
@@ -33,12 +35,13 @@ class AjaxController extends CoinPaymentController {
      *
      * @return Json
      */
-    public function rates($usd) {
+    public function rates($usd)
+    {
         $rates = $this->api_call('rates', [
             'accepted' => 1
         ]);
-        
-        if(strtolower($rates['error']) == 'ok') {
+
+        if (strtolower($rates['error']) == 'ok') {
             return $this->rates_formater($rates['result'], $usd);
         }
 
@@ -47,7 +50,6 @@ class AjaxController extends CoinPaymentController {
             'status' => $rates['error'],
             'error' => 'Fata error, cannot getting support coin from CoinPayments.'
         ];
-
     }
 
     /**
@@ -57,124 +59,125 @@ class AjaxController extends CoinPaymentController {
      * @param [String] $usd
      * @return Array
      */
-    protected function rates_formater(Array $rates, $usd) {
-            
-            if(!is_array($rates)){
-                throw new Exception('The data must be an array');
-            }
+    protected function rates_formater(array $rates, $usd)
+    {
 
-            if(empty($rates['BTC'])){
-                throw new Exception('Rate BTC not found!, please activate BTC support coin for default coin rates.');
-            }
+        if (!is_array($rates)) {
+            throw new Exception('The data must be an array');
+        }
 
-            if(empty($rates[config('coinpayment.default_currency')])){
-                throw new Exception('Is fiat ' . config('coinpayment.default_currency') . ' not supported. please contact CoinPayments support.');
+        if (empty($rates['BTC'])) {
+            throw new Exception('Rate BTC not found!, please activate BTC support coin for default coin rates.');
+        }
+
+        if (empty($rates[config('coinpayment.default_currency')])) {
+            throw new Exception('Is fiat ' . config('coinpayment.default_currency') . ' not supported. please contact CoinPayments support.');
+        }
+
+        /**
+         * Get custom logo
+         */
+        $logos = config('coinpayment.logos', []);
+
+        /**
+         * Get default coin and fiat 
+         */
+        $btcRate = (float) $rates['BTC']['rate_btc'];
+        $usdRate = (float) $rates[config('coinpayment.default_currency')]['rate_btc'];
+        $rateAmount = $usdRate * (float) $usd;
+
+        $fiat = [];
+        $coins = [];
+        $aliases = [];
+        $coins_accept = [];
+        foreach ($rates as $coin => $value) {
+            /**
+             * Get all crypto currencies
+             */
+            if ((int) $value['is_fiat'] === 0) {
+                $rate = $rates[$coin]['rate_btc'] > 0 ? ($rateAmount / $rates[$coin]['rate_btc']) : 0;
+
+                if (in_array($coin, ['BTC.LN'])) {
+                    $img = 'BTCLN';
+                } else if (in_array($coin, ['USDT.ERC20'])) {
+                    $img = 'USDT';
+                } else {
+                    $img = $coin;
+                }
+
+
+                $icon = $logos[$value['name']] ?? 'https://www.coinpayments.net/images/coins/' . $img . '.png';
+
+                $coins[] = [
+                    'name' => $value['name'],
+                    'amount' => $rate > 0 ? number_format($rate, 8, '.', '') : '-',
+                    'iso' => $coin,
+                    'icon' => $icon,
+                    'selected' => $coin == 'BTC' ? true : false,
+                    'accepted' => $value['accepted']
+                ];
+
+                /**
+                 * Set all aliases coin
+                 */
+                $aliases[$coin] = $value['name'];
             }
 
             /**
-             * Get custom logo
+             * Get accepted crypto currencies
              */
-            $logos = config('coinpayment.logos', []);
+            if ((int) $value['is_fiat'] === 0 && $value['accepted'] == 1) {
+                $rate = $rates[$coin]['rate_btc'] > 0 ? ($rateAmount / $rates[$coin]['rate_btc']) : 0;
 
-            /**
-             * Get default coin and fiat 
-             */
-            $btcRate = (FLOAT) $rates['BTC']['rate_btc'];
-            $usdRate = (FLOAT) $rates[config('coinpayment.default_currency')]['rate_btc'];
-            $rateAmount = $usdRate * (FLOAT) $usd;
-
-            $fiat = [];
-            $coins = [];
-            $aliases = [];
-            $coins_accept = [];
-            foreach($rates as $coin => $value) {
-                /**
-                 * Get all crypto currencies
-                 */
-                if((INT) $value['is_fiat'] === 0){
-                    $rate = $rates[$coin]['rate_btc'] > 0 ? ($rateAmount / $rates[$coin]['rate_btc']) : 0;
-
-                    if(in_array($coin, ['BTC.LN'])) {
-                        $img = 'BTCLN';
-                    } else if(in_array($coin, ['USDT.ERC20'])) {
-                        $img = 'USDT';
-                    } else {
-                        $img = $coin;
-                    }
-
-                    
-                    $icon = $logos[$value['name']] ?? 'https://www.coinpayments.net/images/coins/' . $img . '.png';
-
-                    $coins[] = [
-                      'name' => $value['name'],
-                      'amount' => $rate > 0 ? number_format($rate,8,'.','') : '-',
-                      'iso' => $coin,
-                      'icon' => $icon,
-                      'selected' => $coin == 'BTC' ? true : false,
-                      'accepted' => $value['accepted']
-                    ];
-
-                    /**
-                     * Set all aliases coin
-                     */
-                    $aliases[$coin] = $value['name'];
+                if (in_array($coin, ['BTC.LN'])) {
+                    $img = 'BTCLN';
+                } else if (in_array($coin, ['USDT.ERC20'])) {
+                    $img = 'USDT';
+                } else {
+                    $img = $coin;
                 }
 
-                /**
-                 * Get accepted crypto currencies
-                 */
-                if((INT) $value['is_fiat'] === 0 && $value['accepted'] == 1){
-                    $rate = $rates[$coin]['rate_btc'] > 0 ? ($rateAmount / $rates[$coin]['rate_btc']) : 0;
+                $icon = $logos[$value['name']] ?? 'https://www.coinpayments.net/images/coins/' . $img . '.png';
 
-                    if(in_array($coin, ['BTC.LN'])) {
-                        $img = 'BTCLN';
-                    } else if(in_array($coin, ['USDT.ERC20'])) {
-                        $img = 'USDT';
-                    } else {
-                        $img = $coin;
-                    }
-
-                    $icon = $logos[$value['name']] ?? 'https://www.coinpayments.net/images/coins/' . $img . '.png';
-                    
-                    $coins_accept[] = [
-                        'name' => $value['name'],
-                        'amount' => $rate > 0 ? number_format($rate,8,'.','') : '-',
-                        'iso' => $coin,
-                        'icon' => $icon,
-                        'selected' => $coin == 'BTC' ? true : false,
-                        'accepted' => $value['accepted']
-                    ];
-                }
-
-                /**
-                 * Get currencies
-                 */
-                if((INT) $value['is_fiat'] === 1){
-                    $fiat[$coin] = $coin;
-                }
+                $coins_accept[] = [
+                    'name' => $value['name'],
+                    'amount' => $rate > 0 ? number_format($rate, 8, '.', '') : '-',
+                    'iso' => $coin,
+                    'icon' => $icon,
+                    'selected' => $coin == 'BTC' ? true : false,
+                    'accepted' => $value['accepted']
+                ];
             }
 
-            return [
-                'result' => true,
-                'coins' => $coins,
-                'accepted_coin' => $coins_accept,
-                'aliases' => $aliases,
-                'fiats' => $fiat
-            ];
-        
+            /**
+             * Get currencies
+             */
+            if ((int) $value['is_fiat'] === 1) {
+                $fiat[$coin] = $coin;
+            }
+        }
+
+        return [
+            'result' => true,
+            'coins' => $coins,
+            'accepted_coin' => $coins_accept,
+            'aliases' => $aliases,
+            'fiats' => $fiat
+        ];
     }
-    
+
     /**
      * Encrypted the payload string data
      *
      * @param Request $request
      * @return Json
      */
-    public function encrypt_payload(Request $request) {
+    public function encrypt_payload(Request $request)
+    {
 
-        try{
+        try {
 
-            if(empty($request->payload)) {
+            if (empty($request->payload)) {
                 throw new Exception("Payload data string cannot be null!");
             }
 
@@ -182,13 +185,13 @@ class AjaxController extends CoinPaymentController {
              * Get payload data
              */
             $payload = $this->helper->getrawtransaction($request->payload);
-            
+
             /**
              * Get support currencies data
              */
             $rates = $this->rates($payload['amountTotal']);
-            
-            if(!$rates['result']) {
+
+            if (!$rates['result']) {
                 throw new Exception($rates['status']);
             }
             /**
@@ -205,7 +208,7 @@ class AjaxController extends CoinPaymentController {
              * Get default currency
              */
             $default_currency = config('coinpayment.default_currency');
-            
+
             return response()->json([
                 'result' => true,
                 'data' => [
@@ -217,19 +220,18 @@ class AjaxController extends CoinPaymentController {
                     'transaction' => $this->transaction_exists($payload['order_id'])
                 ]
             ], 200);
-
-        }catch(Exception $e) {
+        } catch (Exception $e) {
             return response()->json([
                 'result' => false,
                 'message' => $e->getMessage()
             ], 400);
         }
-
     }
 
-    private function transaction_exists($order_id) {
+    private function transaction_exists($order_id)
+    {
         $transaction = $this->model->whereNotNull('txn_id')->where('order_id', $order_id)->first();
-        if($transaction) {
+        if ($transaction) {
             return [
                 'address' => $transaction->address,
                 'amount' => $transaction->amount,
@@ -253,7 +255,6 @@ class AjaxController extends CoinPaymentController {
         }
 
         return null;
-
     }
 
     /**
@@ -262,56 +263,57 @@ class AjaxController extends CoinPaymentController {
      * @param Request $request
      * @return Json
      */
-    public function create_transaction(Request $request) {
-        try{
+    public function create_transaction(Request $request)
+    {
+        try {
             DB::beginTransaction();
 
 
-            if(empty($request->amountTotal)){
+            if (empty($request->amountTotal)) {
                 throw new Exception('Amount total not found!');
             }
 
-            if(empty($request->coinAmount)){
+            if (empty($request->coinAmount)) {
                 throw new Exception('Coin amount total not found!');
             }
 
-            if(empty($request->coinIso)){
+            if (empty($request->coinIso)) {
                 throw new Exception('Type currency coin not found!');
             }
 
-            if(empty($request->order_id)){
+            if (empty($request->order_id)) {
                 throw new Exception('Order ID cannot be null, please fill it with invoice number or other');
             }
 
             $check_transaction = $this->model->where('order_id', $request->order_id)->whereNotNull('txn_id')->first();
 
-            if($check_transaction) {
+            if ($check_transaction) {
                 throw new Exception('Order ID: ' . $check_transaction->order_id . ' already exists, and the current status is ' . $check_transaction->status_text);
             }
 
             $total = 0;
-            foreach($request->items as $item) {
+            foreach ($request->items as $item) {
                 $total += $item['itemSubtotalAmount'];
             }
-            if($total != $request->amountTotal) {
+            if ($total != $request->amountTotal) {
                 throw new Exception('the calculation of amountTotal and item total is different!');
             }
 
 
             $data = [
-                'amount' => (FLOAT) $request->amountTotal,
+                'amount' => (float) $request->amountTotal,
                 'currency1' => config('coinpayment.default_currency'),
                 'currency2' => $request->coinIso,
                 'buyer_email' => $request->buyer_email
             ];
-            
+
             $create = $this->api_call('create_transaction', $data);
-            if($create['error'] != 'ok'){
+            if ($create['error'] != 'ok') {
                 throw new Exception($create['error']);
             }
 
             $info = $this->api_call('get_tx_info', ['txid' => $create['result']['txn_id']]);
-            if($info['error'] != 'ok'){
+            if ($info['error'] != 'ok') {
                 throw new Exception($info['error']);
             }
             $result = array_merge($create['result'], $info['result'], [
@@ -326,12 +328,12 @@ class AjaxController extends CoinPaymentController {
                 'checkout_url' => $request->checkout_url,
             ]);
 
-            
+
             /**
              * Save to database
              */
             $transaction = $this->model->whereNull('txn_id')->where('order_id', $request->order_id)->first();
-            if($transaction) {
+            if ($transaction) {
                 /**
                  * Update existing transaction
                  */
@@ -346,8 +348,8 @@ class AjaxController extends CoinPaymentController {
                 /**
                  * Create item transaction
                  */
-                
-                foreach($request->items as $item) {
+
+                foreach ($request->items as $item) {
                     $transaction->items()->create([
                         'description' => is_object($item) ? $item->itemDescription : $item['itemDescription'],
                         'price' => is_object($item) ? $item->itemPrice : $item['itemPrice'],
@@ -369,8 +371,7 @@ class AjaxController extends CoinPaymentController {
 
             DB::commit();
             return response()->json($result, 200);
-
-        }catch(Exception $e) {
+        } catch (Exception $e) {
             DB::rollback();
             return response()->json([
                 'result' => false,
@@ -379,10 +380,11 @@ class AjaxController extends CoinPaymentController {
         }
     }
 
-    protected function default_coin($rates) {
-        
-        foreach($rates['coins'] as $rate) {
-            if($rate['selected']) {
+    protected function default_coin($rates)
+    {
+
+        foreach ($rates['coins'] as $rate) {
+            if ($rate['selected']) {
                 return $rate;
             }
         }
@@ -393,12 +395,14 @@ class AjaxController extends CoinPaymentController {
      *
      * @return void
      */
-    public function get_balance() {
+    public function get_balance()
+    {
         $response = CoinPayment::getBalances();
-        if($response['error'] == 'ok') {
+        if ($response['error'] == 'ok') {
             $blances = $response['result'];
             $coins = [];
-            foreach($blances as $coin => $data) {
+            foreach ($blances as $coin => $data) {
+                $icon = explode('.', $coin);
                 $coins[] = [
                     'coin' => $coin,
                     'balance' => number_format($data['balance'], 2),
@@ -416,7 +420,7 @@ class AjaxController extends CoinPaymentController {
                         'note' => ''
                     ],
                     'loading' => false,
-                    'icon' => 'https://www.coinpayments.net/images/coins/' . $coin . '.png'
+                    'icon' => 'https://www.coinpayments.net/images/coins/' . $icon[0] . '.png'
                 ];
             }
 
@@ -428,9 +432,10 @@ class AjaxController extends CoinPaymentController {
         ], 400);
     }
 
-    public function top_up(Request $request) {
+    public function top_up(Request $request)
+    {
 
-        if(config('ladmin')) {
+        if (config('ladmin')) {
             ladmin()->allow(['administrator.coinpayment.balances.topup']);
         }
 
@@ -438,7 +443,7 @@ class AjaxController extends CoinPaymentController {
             'currency' => ['required']
         ]);
         $response = CoinPayment::getDepositAddress($request->currency);
-        if($response['error'] == 'ok') {
+        if ($response['error'] == 'ok') {
             return response()->json([
                 'coin' => $request->currency,
                 'address' => $response['result']['address']
@@ -449,9 +454,10 @@ class AjaxController extends CoinPaymentController {
         ], 400);
     }
 
-    public function create_withdrawal(Request $request) {
+    public function create_withdrawal(Request $request)
+    {
 
-        if(config('ladmin')) {
+        if (config('ladmin')) {
             ladmin()->allow(['administrator.coinpayment.balances.withdrawal']);
         }
 
@@ -463,25 +469,25 @@ class AjaxController extends CoinPaymentController {
         ]);
 
         $response = CoinPayment::createWithdrawal($request->all());
-        if($response['error'] == 'ok') {
+        if ($response['error'] == 'ok') {
             return response()->json($result['result']);
         }
 
         return response()->json([
             'message' => $response['error'] ?? 'Request balance failed!'
         ], 400);
-
     }
 
-    public function get_withdrawal_info($id) {
+    public function get_withdrawal_info($id)
+    {
 
-        if(config('ladmin')) {
+        if (config('ladmin')) {
             ladmin()->allow(['administrator.coinpayment.withdrawal.show']);
         }
 
         $response = CoinPayment::getWithdrawalInfo($id);
 
-        if($response['error'] == 'ok') {
+        if ($response['error'] == 'ok') {
             return response()->json($result['result']);
         }
 
@@ -489,5 +495,4 @@ class AjaxController extends CoinPaymentController {
             'message' => $response['error'] ?? 'Request balance failed!'
         ], 400);
     }
-
 }

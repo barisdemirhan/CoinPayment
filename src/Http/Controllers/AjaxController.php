@@ -104,7 +104,7 @@ class AjaxController extends CoinPaymentController
                 } else {
                     $img = $coin;
                 }
-
+                $img = explode('.', $img)[0];
 
                 $icon = $logos[$value['name']] ?? 'https://www.coinpayments.net/images/coins/' . $img . '.png';
 
@@ -136,6 +136,7 @@ class AjaxController extends CoinPaymentController
                 } else {
                     $img = $coin;
                 }
+                $img = explode('.', $img)[0];
 
                 $icon = $logos[$value['name']] ?? 'https://www.coinpayments.net/images/coins/' . $img . '.png';
 
@@ -402,7 +403,7 @@ class AjaxController extends CoinPaymentController
             $blances = $response['result'];
             $coins = [];
             foreach ($blances as $coin => $data) {
-                $icon = explode('.', $coin);
+                $icon = explode('.', $coin)[0];
                 $coins[] = [
                     'coin' => $coin,
                     'balance' => number_format($data['balance'], 2),
@@ -420,7 +421,7 @@ class AjaxController extends CoinPaymentController
                         'note' => ''
                     ],
                     'loading' => false,
-                    'icon' => 'https://www.coinpayments.net/images/coins/' . $icon[0] . '.png'
+                    'icon' => 'https://www.coinpayments.net/images/coins/' . $icon . '.png'
                 ];
             }
 

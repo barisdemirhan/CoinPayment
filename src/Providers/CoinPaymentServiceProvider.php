@@ -77,15 +77,19 @@ class CoinPaymentServiceProvider extends ServiceProvider
      *
      * @return void
      */
-    public function registerViews()
+  public function registerViews()
     {
         $viewPath = resource_path('views/modules/coinpayment');
 
-        $sourcePath = __DIR__.'/../Resources/views';
+        if (!is_dir($viewPath)) {
+            mkdir($viewPath, 0755, true);
+        }
+
+        $sourcePath = __DIR__ . '/../Resources/views';
 
         $this->publishes([
             $sourcePath => $viewPath
-        ],'views');
+        ], 'views');
 
         $this->loadViewsFrom(array_merge(array_map(function ($path) {
             return $path . '/modules/coinpayment';
